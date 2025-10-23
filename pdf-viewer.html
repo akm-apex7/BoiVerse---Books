@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="bn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Book Reader - PDF Viewer</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        background: #000;
+        color: #fff;
+        font-family: sans-serif;
+      }
+
+      #viewer-container {
+        position: relative;
+        height: 100vh;
+        width: 100%;
+      }
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: transparent;
+      }
+
+      /* Loader */
+      #loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 16px;
+        color: #ccc;
+        text-align: center;
+      }
+
+      /* Light mode auto detect */
+      @media (prefers-color-scheme: light) {
+        body { background: #fff; color: #000; }
+      }
+
+      /* Custom toolbar */
+      #toolbar {
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        z-index: 100;
+        display: flex;
+        gap: 8px;
+      }
+
+      button {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: inherit;
+        font-size: 14px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      /* Dark mode styling for buttons */
+      @media (prefers-color-scheme: light) {
+        button {
+          background: rgba(0, 0, 0, 0.05);
+          color: #000;
+          border: 1px solid #ccc;
+        }
+        button:hover {
+          background: rgba(0, 0, 0, 0.1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewer-container">
+      <div id="toolbar">
+        <button onclick="zoomIn()">＋</button>
+        <button onclick="zoomOut()">－</button>
+      </div>
+
+      <div id="loading">📖 Loading PDF...</div>
+      <iframe id="pdf-frame"></iframe>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const file = params.get("file");
+      const frame = document.getElementById("pdf-frame");
+      const loading = document.getElementById("loading");
+
+      if (file) {
+        const viewer = "https://mozilla.github.io/pdf.js/web/viewer.html?file=" + encodeURIComponent(file);
+        frame.src = viewer;
+        frame.onload = () => {
+          loading.style.display = "none";
+        };
+      } else {
+        loading.innerHTML = "⚠️ No file specified! Use ?file=<PDF_URL>";
+      }
+
+      // Zoom controls (through postMessage to PDF.js iframe)
+      function zoomIn() {
+        frame.contentWindow.postMessage({ type: "zoomIn" }, "*");
+      }
+      function zoomOut() {
+        frame.contentWindow.postMessage({ type: "zoomOut" }, "*");
+      }
+
+      // Remember last scroll/page (optional future upgrade)
+      window.addEventListener("beforeunload", () => {
+        // future feature: save current page
+      });
+    </script>
+
+    <!-- Powered by Mozilla PDF.js -->
+  </body>
+</html>
