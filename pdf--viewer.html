@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="bn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Minimal PDF Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        font-family: "Noto Sans Bengali", sans-serif;
+        background-color: #000;
+        color: #fff;
+        overflow-y: scroll;
+      }
+      #toolbar {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        background: rgba(0,0,0,0.8);
+        padding: 8px 12px;
+        text-align: center;
+        font-size: 16px;
+        z-index: 10;
+      }
+      #pdfContainer {
+        margin-top: 50px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        margin: 10px 0;
+        border-radius: 6px;
+        box-shadow: 0 0 10px rgba(255,255,255,0.1);
+        width: 95%;
+        height: auto;
+      }
+      button {
+        background: #fff;
+        color: #000;
+        border: none;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-weight: 600;
+      }
+      button:active { opacity: 0.8; }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <span id="pageInfo">পৃষ্ঠা লোড হচ্ছে...</span>
+      <button id="toggleTheme" style="margin-left: 10px;">🌙</button>
+    </div>
+    <div id="pdfContainer"></div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const pdfUrl = urlParams.get("file");
+      const container = document.getElementById("pdfContainer");
+      const pageInfo = document.getElementById("pageInfo");
+      const toggleBtn = document.getElementById("toggleTheme");
+
+      let pdfDoc = null;
+      let isDark = true;
+
+      if (!pdfUrl) {
+        container.innerHTML = "<p style='color:red;'>❌ কোনো PDF ফাইল পাওয়া যায়নি।</p>";
+      } else {
+        pdfjsLib.getDocument(pdfUrl).promise.then((pdf) => {
+          pdfDoc = pdf;
+          pageInfo.textContent = `পৃষ্ঠা 1 - ${pdf.numPages}`;
+          renderAllPages();
+        });
+      }
+
+      async function renderAllPages() {
+        for (let num = 1; num <= pdfDoc.numPages; num++) {
+          const page = await pdfDoc.getPage(num);
+          const viewport = page.getViewport({ scale: 1.2 });
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          const renderCtx = {
+            canvasContext: ctx,
+            viewport,
+          };
+
+          // Background
+          ctx.fillStyle = isDark ? "#000" : "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          page.render(renderCtx);
+          container.appendChild(canvas);
+        }
+        pageInfo.textContent = `মোট ${pdfDoc.numPages} পৃষ্ঠা`;
+      }
+
+      toggleBtn.onclick = () => {
+        isDark = !isDark;
+        document.body.style.backgroundColor = isDark ? "#000" : "#fff";
+        document.body.style.color = isDark ? "#fff" : "#000";
+        container.innerHTML = "";
+        renderAllPages();
+      };
+    </script>
+  </body>
+</html>
