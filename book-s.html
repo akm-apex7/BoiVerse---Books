@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="bn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Minimal PDF Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        font-family: "Noto Sans Bengali", sans-serif;
+        background-color: #000;
+        color: #fff;
+        overflow-y: auto;
+      }
+
+      /* ----- Toolbar ----- */
+      #toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 10px 14px;
+        font-size: 16px;
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+      }
+
+      #page-info {
+        font-weight: 600;
+      }
+
+      button {
+        background: #fff;
+        color: #000;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:active {
+        opacity: 0.8;
+      }
+
+      /* ----- PDF Container ----- */
+      #pdfContainer {
+        margin-top: 70px; /* toolbar height */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      canvas {
+        margin: 12px 0;
+        border-radius: 10px;
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+        width: 95%;
+        height: auto;
+        transition: filter 0.3s ease;
+      }
+
+      .dark canvas {
+        filter: invert(0.95) hue-rotate(180deg);
+      }
+    </style>
+  </head>
+
+  <body class="dark">
+    <div id="toolbar">
+      <span id="page-info">Page 0 / 0</span>
+      <button id="toggleTheme">☀️ Light</button>
+    </div>
+
+    <div id="pdfContainer"></div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const pdfUrl = urlParams.get("file");
+      const container = document.getElementById("pdfContainer");
+      const pageInfo = document.getElementById("page-info");
+      const toggleBtn = document.getElementById("toggleTheme");
+      const body = document.body;
+
+      let pdfDoc = null;
+      let isDark = true;
+      let scale = 1.2; // zoom level
+      let currentPage = 1;
+
+      // Load PDF
+      if (!pdfUrl) {
+        container.innerHTML = "<p style='color:red;'>❌ কোনো PDF ফাইল পাওয়া যায়নি।</p>";
+      } else {
+        pdfjsLib.getDocument(pdfUrl).promise.then((pdf) => {
+          pdfDoc = pdf;
+          renderAllPages();
+        });
+      }
+
+      // Render All Pages
+      function renderAllPages() {
+        container.innerHTML = "";
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+          const canvas = document.createElement("canvas");
+          canvas.dataset.page = i;
+          container.appendChild(canvas);
+          renderPage(i, canvas);
+        }
+        setupScrollWatcher();
+      }
+
+      // Render Single Page
+      function renderPage(num, canvas) {
+        pdfDoc.getPage(num).then(function (page) {
+          const viewport = page.getViewport({ scale });
+          const ctx = canvas.getContext("2d");
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          const renderContext = { canvasContext: ctx, viewport: viewport };
+          page.render(renderContext).promise.then(() => {
+            pageInfo.textContent = `Page ${currentPage} / ${pdfDoc.numPages}`;
+          });
+        });
+      }
+
+      // Scroll Page Tracker
+      function setupScrollWatcher() {
+        window.addEventListener("scroll", () => {
+          const canvases = document.querySelectorAll("canvas");
+          let windowMiddle = window.innerHeight / 2;
+          canvases.forEach((canvas) => {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.top < windowMiddle && rect.bottom > windowMiddle) {
+              currentPage = parseInt(canvas.dataset.page);
+            }
+          });
+          pageInfo.textContent = `Page ${currentPage} / ${pdfDoc.numPages}`;
+        });
+      }
+
+      // Theme Toggle
+      toggleBtn.onclick = () => {
+        isDark = !isDark;
+        if (isDark) {
+          body.classList.add("dark");
+          body.style.backgroundColor = "#000";
+          body.style.color = "#fff";
+          toggleBtn.textContent = "☀️ Light";
+        } else {
+          body.classList.remove("dark");
+          body.style.backgroundColor = "#fff";
+          body.style.color = "#000";
+          toggleBtn.textContent = "🌙 Dark";
+        }
+      };
+    </script>
+  </body>
+</html>
