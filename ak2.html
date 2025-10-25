@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+          <!DOCTYPE html>
 <html lang="bn">
   <head>
     <meta charset="utf-8" />
@@ -128,17 +128,29 @@
       function setupScrollWatcher() {
         window.addEventListener("scroll", () => {
           const canvases = document.querySelectorAll("canvas");
-          let current = 1;
           const scrollMiddle = window.innerHeight / 2;
+          const visiblePages = [];
 
           canvases.forEach((canvas) => {
             const rect = canvas.getBoundingClientRect();
             if (scrollMiddle >= rect.top && scrollMiddle <= rect.bottom) {
-              current = parseInt(canvas.dataset.page);
+              visiblePages.push(parseInt(canvas.dataset.page));
             }
           });
 
-          pageInfo.textContent = `📄 Page ${current} / ${pdfDoc.numPages}`;
+          let pageText = "Page ";
+          if (visiblePages.length === 1) {
+            pageText += `${visiblePages[0]}`;
+          } else if (visiblePages.length > 1) {
+            const minPage = Math.min(...visiblePages);
+            const maxPage = Math.max(...visiblePages);
+            pageText += `${minPage}-${maxPage}`;
+          } else {
+            pageText += "?";
+          }
+
+          pageText += ` / ${pdfDoc.numPages}`;
+          pageInfo.textContent = `📄 ${pageText}`;
         });
       }
 
@@ -158,4 +170,4 @@
       };
     </script>
   </body>
-</html>
+  </html>
