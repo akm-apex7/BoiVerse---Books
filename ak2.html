@@ -1,4 +1,4 @@
-          <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="bn">
   <head>
     <meta charset="utf-8" />
@@ -77,8 +77,6 @@
     <div id="pdfContainer"></div>
 
     <script>
-      const urlParams = new URLSearchParams(window.location.search);
-      const pdfUrl = urlParams.get("file");
       const container = document.getElementById("pdfContainer");
       const pageInfo = document.getElementById("page-info");
       const toggleBtn = document.getElementById("toggleTheme");
@@ -88,10 +86,16 @@
       let scale = 1.4;
       let isDark = true;
 
-      if (!pdfUrl) {
-        container.innerHTML = "<p style='color:red;'>❌ কোনো PDF লিংক পাওয়া যায়নি।</p>";
-      } else {
-        pdfjsLib.getDocument(pdfUrl).promise
+      // ✅ React Native থেকে injectedJavaScript দ্বারা পাঠানো হবে
+      function loadPdf() {
+        if (!window.pdfUrl) {
+          container.innerHTML = "<p style='color:red;'>❌ কোনো PDF লিংক পাওয়া যায়নি।</p>";
+          return;
+        }
+
+        console.log("📄 PDF লিংক:", window.pdfUrl);
+
+        pdfjsLib.getDocument(window.pdfUrl).promise
           .then((pdf) => {
             pdfDoc = pdf;
             renderAllPages();
@@ -168,6 +172,11 @@
           toggleBtn.textContent = "🌙 Dark";
         }
       };
+
+      // 🔥 React Native থেকে pdfUrl আসার পরে এই ফাংশন কল হবে
+      window.onload = () => {
+        loadPdf();
+      };
     </script>
   </body>
-  </html>
+</html>
