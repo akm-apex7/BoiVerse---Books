@@ -12,7 +12,7 @@
         font-family: "Noto Sans Bengali", sans-serif;
         background-color: #000;
         color: #fff;
-        overflow-y: auto;
+        overflow: hidden;
       }
 
       #toolbar {
@@ -20,30 +20,36 @@
         top: 0;
         width: 100%;
         background: #ff694093;
-        padding: 12px;
+        padding: 10px 12px;
         font-size: 16px;
         z-index: 10;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        backdrop-filter: blur(6px);
       }
 
       #page-info {
         font-weight: 600;
-        flex: 1;
+      }
+
+      #nav-buttons {
+        display: flex;
+        gap: 6px;
       }
 
       #pdfContainer {
         margin-top: 60px;
         display: flex;
-        flex-direction: column;
+        justify-content: center;
         align-items: center;
+        height: calc(100vh - 60px);
       }
 
       canvas {
-        margin: 10px 0;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(255,255,255,0.1);
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(255,255,255,0.15);
         width: 95%;
         height: auto;
         transition: filter 0.3s ease;
@@ -58,101 +64,97 @@
         color: #000;
         border: none;
         border-radius: 6px;
-        padding: 8px 12px;
+        padding: 6px 12px;
         font-weight: 600;
         cursor: pointer;
+        transition: 0.2s;
       }
 
-      button:active {
-        opacity: 0.8;
+      button:hover {
+        opacity: 0.9;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
     </style>
   </head>
   <body class="dark">
     <div id="toolbar">
+      <div id="nav-buttons">
+        <button id="prev">⬅️ Prev</button>
+        <button id="next">Next ➡️</button>
+      </div>
       <span id="page-info">📄 Loading...</span>
       <button id="toggleTheme">☀️ Light</button>
     </div>
 
-    <div id="pdfContainer"></div>
+    <div id="pdfContainer">
+      <canvas id="pdfCanvas"></canvas>
+    </div>
 
     <script>
       const urlParams = new URLSearchParams(window.location.search);
       const pdfUrl = urlParams.get("file");
-      const container = document.getElementById("pdfContainer");
+      const pdfContainer = document.getElementById("pdfContainer");
+      const canvas = document.getElementById("pdfCanvas");
       const pageInfo = document.getElementById("page-info");
       const toggleBtn = document.getElementById("toggleTheme");
+      const prevBtn = document.getElementById("prev");
+      const nextBtn = document.getElementById("next");
       const body = document.body;
 
       let pdfDoc = null;
+      let currentPage = 1;
+      let totalPages = 0;
       let scale = 1.4;
       let isDark = true;
 
       if (!pdfUrl) {
-        container.innerHTML = "<p style='color:red;'>❌ কোনো PDF লিংক পাওয়া যায়নি।</p>";
+        pdfContainer.innerHTML = "<p style='color:red;'>❌ কোনো PDF লিংক পাওয়া যায়নি।</p>";
       } else {
         pdfjsLib.getDocument(pdfUrl).promise
           .then((pdf) => {
             pdfDoc = pdf;
-            renderAllPages();
-            setupScrollWatcher();
-            pageInfo.textContent = `📄 Page 1 / ${pdfDoc.numPages}`;
+            totalPages = pdf.numPages;
+            renderPage(currentPage);
           })
           .catch((err) => {
-            container.innerHTML = `<p style='color:red;'>❌ PDF লোড করতে সমস্যা হয়েছে: ${err.message}</p>`;
+            pdfContainer.innerHTML = `<p style='color:red;'>❌ PDF লোড করতে সমস্যা হয়েছে: ${err.message}</p>`;
             console.error("PDF Load Error:", err);
           });
       }
 
-      function renderAllPages() {
-        container.innerHTML = "";
-        for (let i = 1; i <= pdfDoc.numPages; i++) {
-          const canvas = document.createElement("canvas");
-          canvas.dataset.page = i;
-          container.appendChild(canvas);
-          renderPage(i, canvas);
-        }
-      }
-
-      function renderPage(num, canvas) {
+      function renderPage(num) {
         pdfDoc.getPage(num).then((page) => {
-          const viewport = page.getViewport({ scale });
           const ctx = canvas.getContext("2d");
+          const viewport = page.getViewport({ scale });
           canvas.height = viewport.height;
           canvas.width = viewport.width;
+
           const renderContext = { canvasContext: ctx, viewport };
-          page.render(renderContext);
-        });
-      }
-
-      function setupScrollWatcher() {
-        window.addEventListener("scroll", () => {
-          const canvases = document.querySelectorAll("canvas");
-          const scrollMiddle = window.innerHeight / 2;
-          const visiblePages = [];
-
-          canvases.forEach((canvas) => {
-            const rect = canvas.getBoundingClientRect();
-            if (scrollMiddle >= rect.top && scrollMiddle <= rect.bottom) {
-              visiblePages.push(parseInt(canvas.dataset.page));
-            }
+          page.render(renderContext).promise.then(() => {
+            pageInfo.textContent = `📄 Page ${num} / ${totalPages}`;
+            prevBtn.disabled = num <= 1;
+            nextBtn.disabled = num >= totalPages;
           });
-
-          let pageText = "Page ";
-          if (visiblePages.length === 1) {
-            pageText += `${visiblePages[0]}`;
-          } else if (visiblePages.length > 1) {
-            const minPage = Math.min(...visiblePages);
-            const maxPage = Math.max(...visiblePages);
-            pageText += `${minPage}-${maxPage}`;
-          } else {
-            pageText += "?";
-          }
-
-          pageText += ` / ${pdfDoc.numPages}`;
-          pageInfo.textContent = `📄 ${pageText}`;
         });
       }
+
+      prevBtn.onclick = () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPage(currentPage);
+        }
+      };
+
+      nextBtn.onclick = () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderPage(currentPage);
+        }
+      };
 
       toggleBtn.onclick = () => {
         isDark = !isDark;
@@ -170,4 +172,4 @@
       };
     </script>
   </body>
-</html>
+  </html>
