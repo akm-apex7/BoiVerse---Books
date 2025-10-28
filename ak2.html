@@ -2,7 +2,7 @@
 <html lang="bn">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <title>BoiVerse PDF Viewer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
@@ -13,50 +13,75 @@
         background-color: #000;
         color: #fff;
         overflow: hidden;
+        touch-action: pan-y pinch-zoom; /* PDF zoom gesture allow */
       }
 
-      #toolbar {
+      /* === Top bar === */
+      #topbar {
         position: fixed;
         top: 0;
-        width: 100%;
-        background: #ff694093;
-        padding: 10px 12px;
-        font-size: 16px;
-        z-index: 10;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        backdrop-filter: blur(6px);
-      }
-
-      #page-info {
-        font-weight: 600;
-      }
-
-      #nav-buttons {
-        display: flex;
-        gap: 6px;
-      }
-
-      #pdfContainer {
-        margin-top: 60px;
+        left: 0;
+        right: 0;
+        height: 50px;
+        background: #ff6940a0;
         display: flex;
         justify-content: center;
         align-items: center;
-        height: calc(100vh - 60px);
+        z-index: 10;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        backdrop-filter: blur(6px);
       }
 
-      canvas {
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(255,255,255,0.15);
+      #toggleTheme {
+        background: #fff;
+        color: #000;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      /* === PDF view === */
+      #pdfContainer {
+        position: absolute;
+        top: 50px;
+        bottom: 55px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      #pdfCanvas {
         width: 95%;
         height: auto;
-        transition: filter 0.3s ease;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(255,255,255,0.15);
+        transition: transform 0.2s ease;
       }
 
-      .dark canvas {
+      .dark #pdfCanvas {
         filter: invert(0.95) hue-rotate(180deg);
+      }
+
+      /* === Bottom bar === */
+      #bottombar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 55px;
+        background: #ff6940a0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 14px;
+        box-shadow: 0 -2px 6px rgba(0,0,0,0.4);
+        backdrop-filter: blur(6px);
+        z-index: 10;
       }
 
       button {
@@ -64,40 +89,42 @@
         color: #000;
         border: none;
         border-radius: 6px;
-        padding: 6px 12px;
+        padding: 6px 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: 0.2s;
-      }
-
-      button:hover {
-        opacity: 0.9;
       }
 
       button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
+
+      #page-info {
+        font-weight: 600;
+      }
     </style>
   </head>
   <body class="dark">
-    <div id="toolbar">
-      <div id="nav-buttons">
-        <button id="prev">⬅️ Prev</button>
-        <button id="next">Next ➡️</button>
-      </div>
-      <span id="page-info">📄 Loading...</span>
+    <!-- Top bar -->
+    <div id="topbar">
       <button id="toggleTheme">☀️ Light</button>
     </div>
 
+    <!-- PDF container -->
     <div id="pdfContainer">
       <canvas id="pdfCanvas"></canvas>
+    </div>
+
+    <!-- Bottom bar -->
+    <div id="bottombar">
+      <button id="prev">⬅️ Prev</button>
+      <span id="page-info">📄 Loading...</span>
+      <button id="next">Next ➡️</button>
     </div>
 
     <script>
       const urlParams = new URLSearchParams(window.location.search);
       const pdfUrl = urlParams.get("file");
-      const pdfContainer = document.getElementById("pdfContainer");
       const canvas = document.getElementById("pdfCanvas");
       const pageInfo = document.getElementById("page-info");
       const toggleBtn = document.getElementById("toggleTheme");
@@ -112,7 +139,8 @@
       let isDark = true;
 
       if (!pdfUrl) {
-        pdfContainer.innerHTML = "<p style='color:red;'>❌ কোনো PDF লিংক পাওয়া যায়নি।</p>";
+        document.getElementById("pdfContainer").innerHTML =
+          "<p style='color:red;'>❌ কোনো PDF লিংক পাওয়া যায়নি।</p>";
       } else {
         pdfjsLib.getDocument(pdfUrl).promise
           .then((pdf) => {
@@ -121,7 +149,8 @@
             renderPage(currentPage);
           })
           .catch((err) => {
-            pdfContainer.innerHTML = `<p style='color:red;'>❌ PDF লোড করতে সমস্যা হয়েছে: ${err.message}</p>`;
+            document.getElementById("pdfContainer").innerHTML =
+              `<p style='color:red;'>❌ PDF লোড করতে সমস্যা হয়েছে: ${err.message}</p>`;
             console.error("PDF Load Error:", err);
           });
       }
@@ -132,7 +161,6 @@
           const viewport = page.getViewport({ scale });
           canvas.height = viewport.height;
           canvas.width = viewport.width;
-
           const renderContext = { canvasContext: ctx, viewport };
           page.render(renderContext).promise.then(() => {
             pageInfo.textContent = `📄 Page ${num} / ${totalPages}`;
